@@ -11,15 +11,12 @@ public class PlayerController : MonoBehaviour
     public float jumpForce = 7f;
     public float gravity = -9.81f;
 
-    [Header("Настройки камеры")]
-    public float lookSensitivity = 2f;
-
     private Rigidbody rb;
     private Animator animator;
     private PlayerControls inputActions;
+    private Camera mainCamera; // Ссылка на камеру
 
     private Vector2 moveInput;
-    private Vector2 lookInput;
     private Vector3 velocity;
     private bool isGrounded;
 
@@ -27,19 +24,14 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
+        mainCamera = Camera.main; // Находим главную камеру
 
-        // Замораживаем вращение по X и Z, чтобы персонаж не падал
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
 
         inputActions = new PlayerControls();
 
-        // Подписываемся на инпуты
         inputActions.Player.Move.performed += ctx => moveInput = ctx.ReadValue<Vector2>();
         inputActions.Player.Move.canceled += ctx => moveInput = Vector2.zero;
-
-        inputActions.Player.Look.performed += ctx => lookInput = ctx.ReadValue<Vector2>();
-        inputActions.Player.Look.canceled += ctx => lookInput = Vector2.zero;
-
         inputActions.Player.Jump.performed += ctx => Jump();
     }
 
@@ -48,45 +40,46 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // Проверка земли через луч вниз
         isGrounded = Physics.Raycast(transform.position, Vector3.down, 1.1f);
 
-        // Если на земле и падаем — обнуляем вертикальную скорость
         if (isGrounded && velocity.y < 0)
         {
             velocity.y = 0f;
         }
 
-        // Движение
-        Vector3 move = new Vector3(moveInput.x, 0, moveInput.y);
+        // 1. Получаем направления камеры (игнорируем наклон по Y, чтобы персонаж не летал)
+        Vector3 camForward = mainCamera.transform.forward;
+        Vector3 camRight = mainCamera.transform.right;
+        camForward.y = 0;
+        camRight.y = 0;
+        camForward.Normalize();
+        camRight.Normalize();
+
+        // 2. Считаем итоговое направление движения относительно камеры
+        Vector3 move = (camForward * moveInput.y + camRight * moveInput.x);
 
         if (move.magnitude >= 0.1f)
         {
-            // Поворот в направлении движения
-            Quaternion targetRotation = Quaternion.LookRotation(move);
+            // Поворот персонажа в сторону ДВИЖЕНИЯ (а не мышки)
+            float targetAngle = Mathf.Atan2(move.x, move.z) * Mathf.Rad2Deg;
+            Quaternion targetRotation = Quaternion.Euler(0f, targetAngle, 0f);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
 
             animator.SetFloat("Speed", move.magnitude);
+
+            // Движение
+            velocity.x = move.x * moveSpeed;
+            velocity.z = move.z * moveSpeed;
         }
         else
         {
             animator.SetFloat("Speed", 0f);
+            // Плавная остановка
+            velocity.x = Mathf.Lerp(velocity.x, 0, Time.deltaTime * 5f);
+            velocity.z = Mathf.Lerp(velocity.z, 0, Time.deltaTime * 5f);
         }
 
-        // Применяем горизонтальное движение
-        velocity.x = move.x * moveSpeed;
-        velocity.z = move.z * moveSpeed;
-
-        // Вращение мышью (горизонтальное)
-        if (lookInput.x != 0)
-        {
-            transform.Rotate(Vector3.up, lookInput.x * lookSensitivity);
-        }
-
-        // Гравитация
         velocity.y += gravity * Time.deltaTime;
-
-        // Применяем скорость к Rigidbody
         rb.linearVelocity = velocity;
     }
 
@@ -94,7 +87,6 @@ public class PlayerController : MonoBehaviour
     {
         if (isGrounded)
         {
-            // Формула прыжка
             velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity);
             animator.SetTrigger("Jump");
         }
