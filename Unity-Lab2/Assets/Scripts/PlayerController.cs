@@ -22,7 +22,7 @@ public class PlayerController : MonoBehaviour
 
     // Переменные для логики прыжка
     private bool isJumping;
-    private bool isMidAir;        // НОВЫЙ ФЛАГ: true, когда мы именно в фазе полета
+    private bool isMidAir;
     private bool canApplyJumpForce;
     private Vector3 jumpDirection;
 
@@ -61,6 +61,7 @@ public class PlayerController : MonoBehaviour
         if (isJumping && isGrounded && !hasLanded)
         {
             hasLanded = true;
+            isMidAir = false; // <--- ВОТ ОНО: как только коснулись земли, режим "полета" выключается, движение блокируется
             animator.SetBool("HasLanded", true);
         }
 
@@ -120,7 +121,6 @@ public class PlayerController : MonoBehaviour
         {
             velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity);
             canApplyJumpForce = false;
-            animator.SetTrigger("JumpMid"); // Запускаем анимацию полета вверх
         }
 
         // Гравитация и применение скорости
@@ -133,7 +133,7 @@ public class PlayerController : MonoBehaviour
         if (isGrounded && !isJumping)
         {
             isJumping = true;
-            isMidAir = false;       // Сбрасываем, так как начинается анимация старта
+            isMidAir = false;
             isFalling = false;
             hasLanded = false;
 
@@ -153,7 +153,7 @@ public class PlayerController : MonoBehaviour
     // Animation Event: вешается на ПОСЛЕДНИЙ кадр анимации Start Jump
     public void OnStartJumpEnd()
     {
-        isMidAir = true;            // Анимация старта прошла, теперь можно рулить в воздухе!
+        isMidAir = true;
         canApplyJumpForce = true;
     }
 
@@ -161,6 +161,6 @@ public class PlayerController : MonoBehaviour
     public void OnJumpToStandEnd()
     {
         isJumping = false;
-        isMidAir = false;           // Полностью завершили прыжок
+        isMidAir = false;
     }
 }
