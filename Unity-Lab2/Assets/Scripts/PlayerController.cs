@@ -22,12 +22,13 @@ public class PlayerController : MonoBehaviour
 
     // Переменные для логики прыжка
     private bool isJumping;
+    private bool isMidAir;        // НОВЫЙ ФЛАГ: true, когда мы именно в фазе полета
     private bool canApplyJumpForce;
     private Vector3 jumpDirection;
 
-    // Новые флаги для аниматора
-    private bool isFalling;   // true, когда высота начинает уменьшаться
-    private bool hasLanded;   // true, когда игрок коснулся земли после прыжка
+    // Флаги для аниматора
+    private bool isFalling;
+    private bool hasLanded;
 
     void Awake()
     {
@@ -60,14 +61,14 @@ public class PlayerController : MonoBehaviour
         if (isJumping && isGrounded && !hasLanded)
         {
             hasLanded = true;
-            animator.SetBool("HasLanded", true); // Сообщаем аниматору, что коснулись земли
+            animator.SetBool("HasLanded", true);
         }
 
         // --- ЛОГИКА ПАДЕНИЯ ---
         if (isJumping && velocity.y < 0 && !isFalling)
         {
             isFalling = true;
-            animator.SetBool("IsFalling", true); // Сообщаем аниматору, что полетели вниз
+            animator.SetBool("IsFalling", true);
         }
 
         // Получаем направления камеры
@@ -80,17 +81,17 @@ public class PlayerController : MonoBehaviour
 
         Vector3 move = (camForward * moveInput.y + camRight * moveInput.x);
 
-        // --- БЛОКИРОВКА ДВИЖЕНИЯ ВО ВРЕМЯ ПРЫЖКА ---
-        // Если идет прыжок, мы ИГНОРИРУЕМ ввод движения и поворота (стоит на месте)
-        if (isJumping)
+        // --- БЛОКИРОВКА ДВИЖЕНИЯ ТОЛЬКО ВО ВРЕМЯ АНИМАЦИЙ (Старт и Приземление) ---
+        if (isJumping && !isMidAir)
         {
+            // Мы в анимации Start Jump или Jump to Stand. Стоим на месте.
             velocity.x = 0f;
             velocity.z = 0f;
             animator.SetFloat("Speed", 0f);
         }
         else
         {
-            // Обычное движение на земле
+            // Движение работает и на земле, и В ПОЛЕТЕ (isMidAir == true)
             if (move.magnitude >= 0.1f)
             {
                 float targetAngle = Mathf.Atan2(move.x, move.z) * Mathf.Rad2Deg;
@@ -104,8 +105,13 @@ public class PlayerController : MonoBehaviour
             else
             {
                 animator.SetFloat("Speed", 0f);
-                velocity.x = Mathf.Lerp(velocity.x, 0, Time.deltaTime * 5f);
-                velocity.z = Mathf.Lerp(velocity.z, 0, Time.deltaTime * 5f);
+
+                // Гасим инерцию ТОЛЬКО если мы на земле. В воздухе игрок должен сохранять инерцию!
+                if (!isMidAir)
+                {
+                    velocity.x = Mathf.Lerp(velocity.x, 0, Time.deltaTime * 5f);
+                    velocity.z = Mathf.Lerp(velocity.z, 0, Time.deltaTime * 5f);
+                }
             }
         }
 
@@ -113,19 +119,13 @@ public class PlayerController : MonoBehaviour
         if (isJumping && canApplyJumpForce)
         {
             velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity);
-
-            // (Опционально) Если хочешь, чтобы он чуть-чуть летел вперед, раскомментируй строки ниже, 
-            // но по ТЗ он должен стоять на месте, поэтому пока оставим 0.
-            // velocity.x = jumpDirection.x * moveSpeed * 0.3f;
-            // velocity.z = jumpDirection.z * moveSpeed * 0.3f;
-
             canApplyJumpForce = false;
             animator.SetTrigger("JumpMid"); // Запускаем анимацию полета вверх
         }
 
         // Гравитация и применение скорости
         velocity.y += gravity * Time.deltaTime;
-        rb.linearVelocity = velocity; // Для Unity 6
+        rb.linearVelocity = velocity;
     }
 
     void Jump()
@@ -133,14 +133,13 @@ public class PlayerController : MonoBehaviour
         if (isGrounded && !isJumping)
         {
             isJumping = true;
+            isMidAir = false;       // Сбрасываем, так как начинается анимация старта
             isFalling = false;
             hasLanded = false;
 
-            // Сбрасываем флаги в аниматоре
             animator.SetBool("IsFalling", false);
             animator.SetBool("HasLanded", false);
 
-            // Сохраняем направление (на случай, если захочешь добавить инерцию)
             Vector3 camForward = mainCamera.transform.forward;
             Vector3 camRight = mainCamera.transform.right;
             camForward.y = 0; camRight.y = 0;
@@ -154,12 +153,14 @@ public class PlayerController : MonoBehaviour
     // Animation Event: вешается на ПОСЛЕДНИЙ кадр анимации Start Jump
     public void OnStartJumpEnd()
     {
+        isMidAir = true;            // Анимация старта прошла, теперь можно рулить в воздухе!
         canApplyJumpForce = true;
     }
 
     // Animation Event: вешается на ПОСЛЕДНИЙ кадр анимации Jump to Stand
     public void OnJumpToStandEnd()
     {
-        isJumping = false; // Прыжок полностью завершен, можно снова ходить
+        isJumping = false;
+        isMidAir = false;           // Полностью завершили прыжок
     }
 }
