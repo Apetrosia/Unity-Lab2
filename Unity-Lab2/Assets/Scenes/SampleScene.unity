@@ -234,7 +234,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   moveSpeed: 5
   rotationSpeed: 10
-  jumpForce: 7
+  jumpForce: 3
   gravity: -9.81
 --- !u!54 &18893674
 Rigidbody:
@@ -386,7 +386,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 317154861}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.20330428, y: -0.0016866561, z: 0.00035021905, w: 0.9791141}
+  m_LocalRotation: {x: 0.20330425, y: -0.0017191207, z: 0.00035695996, w: 0.97911406}
   m_LocalPosition: {x: 3.9223, y: 2.503529, z: -5.747625}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -595,7 +595,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.20330428, y: -0.0016866563, z: 0.00035021908, w: 0.9791141}
+  m_LocalRotation: {x: 0.20330425, y: -0.0017191207, z: 0.00035696, w: 0.97911406}
   m_LocalPosition: {x: 3.9223, y: 2.503529, z: -5.747625}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
