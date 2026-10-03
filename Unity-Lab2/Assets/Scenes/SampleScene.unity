@@ -859,7 +859,7 @@ MonoBehaviour:
   moveSpeed: 5
   rotationSpeed: 10
   jumpForce: 3
-  gravity: -9.81
+  groundCheckNormalThreshold: 0.7
 --- !u!54 &18893674
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1010,7 +1010,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 317154861}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.20330447, y: -0.00096947554, z: 0.00020130293, w: 0.97911507}
+  m_LocalRotation: {x: 0.20330428, y: -0.0016866564, z: 0.0003502191, w: 0.9791141}
   m_LocalPosition: {x: 4, y: 2.503529, z: -4.7685847}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1219,7 +1219,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.20330445, y: -0.0009694754, z: 0.00020130289, w: 0.97911507}
+  m_LocalRotation: {x: 0.20330428, y: -0.0016866565, z: 0.0003502191, w: 0.9791141}
   m_LocalPosition: {x: 4, y: 2.503529, z: -4.7685847}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1317,7 +1317,7 @@ GameObject:
   - component: {fileID: 391488374}
   m_Layer: 0
   m_Name: Ground
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

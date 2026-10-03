@@ -8,8 +8,10 @@ public class PlayerController : MonoBehaviour
     public float rotationSpeed = 10f;
 
     [Header("Настройки прыжка")]
-    public float jumpForce = 7f;
-    public float gravity = -9.81f;
+    public float jumpForce = 55f;
+
+        [Header("Настройки проверки земли")]
+    public float groundCheckNormalThreshold = 0.7f;
 
     private Rigidbody rb;
     private Animator animator;
@@ -17,16 +19,11 @@ public class PlayerController : MonoBehaviour
     private Camera mainCamera;
 
     private Vector2 moveInput;
-    private Vector3 velocity;
-    private bool isGrounded;
+    private Vector3 targetVelocity;
 
-    // Переменные для логики прыжка
+    private bool isGrounded;
     private bool isJumping;
     private bool isMidAir;
-    private bool canApplyJumpForce;
-    private Vector3 jumpDirection;
-
-    // Флаги для аниматора
     private bool isFalling;
     private bool hasLanded;
 
@@ -49,30 +46,26 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        isGrounded = Physics.Raycast(transform.position, Vector3.down, 1.1f);
-
-        // Защита от проваливания
-        if (isGrounded && velocity.y < 0)
-        {
-            velocity.y = 0f;
-        }
-
-        // --- ЛОГИКА ПРИЗЕМЛЕНИЯ ---
         if (isJumping && isGrounded && !hasLanded)
         {
             hasLanded = true;
-            isMidAir = false; // <--- ВОТ ОНО: как только коснулись земли, режим "полета" выключается, движение блокируется
             animator.SetBool("HasLanded", true);
         }
 
-        // --- ЛОГИКА ПАДЕНИЯ ---
-        if (isJumping && velocity.y < 0 && !isFalling)
+        if (isJumping && rb.linearVelocity.y < 0 && !isFalling)
         {
             isFalling = true;
             animator.SetBool("IsFalling", true);
         }
+    }
 
-        // Получаем направления камеры
+    void FixedUpdate()
+    {
+        if (isGrounded && rb.linearVelocity.y < 0)
+        {
+            rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        }
+
         Vector3 camForward = mainCamera.transform.forward;
         Vector3 camRight = mainCamera.transform.right;
         camForward.y = 0;
@@ -82,50 +75,60 @@ public class PlayerController : MonoBehaviour
 
         Vector3 move = (camForward * moveInput.y + camRight * moveInput.x);
 
-        // --- БЛОКИРОВКА ДВИЖЕНИЯ ТОЛЬКО ВО ВРЕМЯ АНИМАЦИЙ (Старт и Приземление) ---
         if (isJumping && !isMidAir)
         {
-            // Мы в анимации Start Jump или Jump to Stand. Стоим на месте.
-            velocity.x = 0f;
-            velocity.z = 0f;
+            targetVelocity = Vector3.zero;
             animator.SetFloat("Speed", 0f);
         }
         else
         {
-            // Движение работает и на земле, и В ПОЛЕТЕ (isMidAir == true)
             if (move.magnitude >= 0.1f)
             {
                 float targetAngle = Mathf.Atan2(move.x, move.z) * Mathf.Rad2Deg;
                 Quaternion targetRotation = Quaternion.Euler(0f, targetAngle, 0f);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.fixedDeltaTime * rotationSpeed);
 
                 animator.SetFloat("Speed", move.magnitude);
-                velocity.x = move.x * moveSpeed;
-                velocity.z = move.z * moveSpeed;
+                targetVelocity.x = move.x * moveSpeed;
+                targetVelocity.z = move.z * moveSpeed;
             }
             else
             {
                 animator.SetFloat("Speed", 0f);
 
-                // Гасим инерцию ТОЛЬКО если мы на земле. В воздухе игрок должен сохранять инерцию!
                 if (!isMidAir)
                 {
-                    velocity.x = Mathf.Lerp(velocity.x, 0, Time.deltaTime * 5f);
-                    velocity.z = Mathf.Lerp(velocity.z, 0, Time.deltaTime * 5f);
+                    targetVelocity.x = Mathf.Lerp(targetVelocity.x, 0, Time.fixedDeltaTime * 5f);
+                    targetVelocity.z = Mathf.Lerp(targetVelocity.z, 0, Time.fixedDeltaTime * 5f);
                 }
             }
         }
 
-        // Применяем силу прыжка, когда анимация Start Jump закончилась
-        if (isJumping && canApplyJumpForce)
-        {
-            velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity);
-            canApplyJumpForce = false;
-        }
+                rb.linearVelocity = new Vector3(targetVelocity.x, rb.linearVelocity.y, targetVelocity.z);
+    }
 
-        // Гравитация и применение скорости
-        velocity.y += gravity * Time.deltaTime;
-        rb.linearVelocity = velocity;
+        private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Ground"))
+        {
+            foreach (ContactPoint contact in collision.contacts)
+            {
+                if (contact.normal.y > groundCheckNormalThreshold)
+                {
+                    isGrounded = true;
+                    isMidAir = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    private void OnCollisionExit(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Ground"))
+        {
+            isGrounded = false;
+        }
     }
 
     void Jump()
@@ -139,25 +142,16 @@ public class PlayerController : MonoBehaviour
 
             animator.SetBool("IsFalling", false);
             animator.SetBool("HasLanded", false);
-
-            Vector3 camForward = mainCamera.transform.forward;
-            Vector3 camRight = mainCamera.transform.right;
-            camForward.y = 0; camRight.y = 0;
-            jumpDirection = (camForward * moveInput.y + camRight * moveInput.x).normalized;
-            if (jumpDirection.magnitude < 0.1f) jumpDirection = transform.forward;
-
             animator.SetTrigger("JumpStart");
         }
     }
 
-    // Animation Event: вешается на ПОСЛЕДНИЙ кадр анимации Start Jump
     public void OnStartJumpEnd()
     {
         isMidAir = true;
-        canApplyJumpForce = true;
+        rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
     }
 
-    // Animation Event: вешается на ПОСЛЕДНИЙ кадр анимации Jump to Stand
     public void OnJumpToStandEnd()
     {
         isJumping = false;

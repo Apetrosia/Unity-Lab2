@@ -179,13 +179,6 @@ ModelImporter:
       bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000u
       curves: []
       events:
-      - time: 0
-        functionName: OnJumpToStandEnd
-        data: 
-        objectReferenceParameter: {fileID: 11500000, guid: 9abcb203f300ed941bdba496262782c2, type: 3}
-        floatParameter: 0
-        intParameter: 0
-        messageOptions: 0
       - time: 1
         functionName: OnJumpToStandEnd
         data: 
